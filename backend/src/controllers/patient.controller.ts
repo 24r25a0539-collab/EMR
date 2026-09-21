@@ -1,4 +1,12 @@
 import { Request, Response } from 'express';
+import type {
+  Notification,
+  CorrectionRequest,
+  MedicalRecord,
+  Medication,
+  PrescriptionMedicine,
+  Prisma,
+} from '@prisma/client';
 import { prisma } from '../models/prisma.js';
 import { logAuditEvent } from '../middleware/audit.middleware.js';
 import { blockchainService } from '../services/blockchain.service.js';
@@ -278,7 +286,7 @@ export class PatientController {
     ]);
 
     const unified: any[] = [
-      ...medicalRecords.map((m) => ({
+      ...medicalRecords.map((m: MedicalRecord) => ({
         id: m.id,
         title: m.title,
         category: m.recordType,
@@ -290,7 +298,7 @@ export class PatientController {
         verified: m.blockchainStatus === 'VERIFIED',
         summary: m.description,
       })),
-      ...consultations.map((c) => ({
+      ...consultations.map((c: Prisma.ConsultationGetPayload<{ include: { doctor: true; hospital: true } }>) => ({
         id: c.consultationNumber || c.id,
         title: `Consultation: ${c.diagnosis}`,
         category: 'Consultation',
@@ -302,7 +310,7 @@ export class PatientController {
         verified: c.blockchainStatus === 'VERIFIED',
         summary: `${c.symptoms}. Treatment: ${c.treatmentPlan}`,
       })),
-      ...prescriptions.map((p) => ({
+      ...prescriptions.map((p: Prisma.PrescriptionGetPayload<{ include: { doctor: true; hospital: true; medicines: true } }>) => ({
         id: p.prescriptionNumber || p.id,
         title: `Prescription: ${p.diagnosis}`,
         category: 'Prescription',
@@ -312,9 +320,9 @@ export class PatientController {
         sha256Hash: p.recordHash,
         blockNumber: 10481,
         verified: p.blockchainStatus === 'VERIFIED',
-        summary: p.medicines.map((m) => `${m.medicineName} ${m.dosage}`).join(', '),
+        summary: p.medicines.map((med: PrescriptionMedicine) => `${med.medicineName} ${med.dosage}`).join(', '),
       })),
-      ...labReports.map((l) => ({
+      ...labReports.map((l: Prisma.LabReportGetPayload<{ include: { doctor: true; hospital: true } }>) => ({
         id: l.reportNumber || l.id,
         title: l.testName,
         category: 'Lab Report',
@@ -593,7 +601,7 @@ export class PatientController {
       orderBy: { timingSlot: 'asc' },
     });
 
-    const enriched = medicines.map((m) => {
+    const enriched = medicines.map((m: Medication) => {
       let meta = { note: '', foodTiming: 'AFTER_MEAL', stock: 10, logs: [] as any[] };
       try {
         if (m.instructions && m.instructions.startsWith('{')) {
@@ -1347,7 +1355,7 @@ export class PatientController {
       orderBy: { createdAt: 'desc' },
     });
 
-    const unreadCount = notifications.filter((n) => !n.isRead).length;
+    const unreadCount = notifications.filter((n: Notification) => !n.isRead).length;
 
     res.json({ success: true, notifications, data: notifications, unreadCount });
   }
@@ -1390,7 +1398,7 @@ export class PatientController {
       orderBy: { createdAt: 'desc' },
     });
 
-    const enrichedTickets = tickets.map((t) => ({
+    const enrichedTickets = tickets.map((t: CorrectionRequest) => ({
       ...t,
       subject: t.fieldName,
       category: t.recordType,
@@ -1486,7 +1494,7 @@ export class PatientController {
     ]);
 
     const documents: any[] = [
-      ...medicalRecords.map((m) => {
+      ...medicalRecords.map((m: MedicalRecord) => {
         const isPrivate = m.description?.includes('VISIBILITY:PRIVATE');
         const emergencyAllowed = m.isEmergencyAccessible !== false;
         return {
@@ -1504,7 +1512,7 @@ export class PatientController {
           documentType: 'MEDICAL_RECORD',
         };
       }),
-      ...labReports.map((l) => {
+      ...labReports.map((l: Prisma.LabReportGetPayload<{ include: { doctor: true; hospital: true } }>) => {
         const isPrivate = l.summary?.includes('VISIBILITY:PRIVATE');
         const emergencyBlocked = l.summary?.includes('EMERGENCY:BLOCKED');
         return {
@@ -1522,7 +1530,7 @@ export class PatientController {
           documentType: 'LAB_REPORT',
         };
       }),
-      ...prescriptions.map((p) => {
+      ...prescriptions.map((p: Prisma.PrescriptionGetPayload<{ include: { doctor: true; hospital: true; medicines: true } }>) => {
         const isPrivate = p.notes?.includes('VISIBILITY:PRIVATE');
         const emergencyBlocked = p.notes?.includes('EMERGENCY:BLOCKED');
         return {
@@ -1540,7 +1548,7 @@ export class PatientController {
           documentType: 'PRESCRIPTION',
         };
       }),
-      ...consultations.map((c) => {
+      ...consultations.map((c: Prisma.ConsultationGetPayload<{ include: { doctor: true; hospital: true } }>) => {
         const isPrivate = c.clinicalNotes?.includes('VISIBILITY:PRIVATE');
         const emergencyBlocked = c.clinicalNotes?.includes('EMERGENCY:BLOCKED');
         return {

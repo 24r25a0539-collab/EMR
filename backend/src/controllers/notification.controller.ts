@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import type { Notification } from '@prisma/client';
 import { prisma } from '../models/prisma.js';
 
 export class NotificationController {
@@ -19,7 +20,7 @@ export class NotificationController {
       orderBy: { createdAt: 'desc' },
     });
 
-    const unreadCount = notifications.filter((n) => !n.isRead).length;
+    const unreadCount = notifications.filter((n: Notification) => !n.isRead).length;
 
     res.json({
       success: true,

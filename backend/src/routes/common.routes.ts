@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../models/prisma.js';
 import { blockchainService } from '../services/blockchain.service.js';
 
@@ -180,7 +181,7 @@ router.get('/doctors/:id/booked-slots', async (req, res, next) => {
       select: { timeSlot: true },
     });
 
-    const bookedSlots = appointments.map((a) => a.timeSlot);
+    const bookedSlots = appointments.map((a: Prisma.AppointmentGetPayload<{ select: { timeSlot: true } }>) => a.timeSlot);
     res.json({ success: true, bookedSlots });
   } catch (err: any) {
     console.error('Error fetching booked slots:', err);
