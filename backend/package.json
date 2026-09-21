@@ -5,7 +5,9 @@
   "description": "EMR Platform Express API with RBAC, Audit Logging, and Blockchain Service",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "db:generate": "prisma generate --schema=../database/prisma/schema.prisma",
+    "postinstall": "prisma generate --schema=../database/prisma/schema.prisma",
+    "build": "npm run db:generate && tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "test": "tsx test/api.test.ts"
@@ -26,6 +28,7 @@
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.13.9",
+    "prisma": "^6.4.1",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3"
   }
