@@ -1,0 +1,34 @@
+{
+  "name": "emr-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-Style Blockchain-Based Electronic Medical Record (EMR) Platform",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "database",
+    "blockchain"
+  ],
+  "scripts": {
+    "db:generate": "cmd /c \"cd database && npx prisma generate\"",
+    "db:push": "cmd /c \"cd database && npx prisma db push\"",
+    "db:seed": "cmd /c \"cd database && npx ts-node prisma/seed.ts\"",
+    "db:studio": "cmd /c \"cd database && npx prisma studio\"",
+    "backend:dev": "cmd /c \"cd backend && npm run dev\"",
+    "frontend:dev": "cmd /c \"cd frontend && npm run dev\"",
+    "blockchain:node": "cmd /c \"cd blockchain && npx hardhat node\"",
+    "blockchain:test": "cmd /c \"cd blockchain && npx hardhat test\"",
+    "blockchain:deploy": "cmd /c \"cd blockchain && npx hardhat run scripts/deploy.ts --network localhost\"",
+    "test": "cmd /c \"cd backend && npm test\" && cmd /c \"cd blockchain && npx hardhat test\""
+  },
+  "keywords": [
+    "emr",
+    "healthcare",
+    "blockchain",
+    "medical-records",
+    "rbac",
+    "audit-logging"
+  ],
+  "author": "EMR Platform Engineering",
+  "license": "MIT"
+}

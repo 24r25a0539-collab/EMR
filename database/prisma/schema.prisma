@@ -1,0 +1,761 @@
+// Prisma Schema for Blockchain-Based Electronic Medical Record (EMR) Platform
+// Configured with SQLite for local standalone execution; switchable to PostgreSQL for production.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// -------------------------------------------------------------
+// Core Authentication & User Management
+// -------------------------------------------------------------
+
+model User {
+  id                String    @id @default(uuid())
+  email             String?   @unique
+  mobile            String?   @unique
+  passwordHash      String? // Required for Doctor, Admin; optional for OTP-only patients
+  role              String    @default("PATIENT") // PATIENT, DOCTOR, ADMIN
+  status            String    @default("ACTIVE") // ACTIVE, SUSPENDED, PENDING
+  otpSecret         String?
+  otpExpiresAt      DateTime?
+  otpAttempts       Int       @default(0)
+  twoFactorEnabled  Boolean   @default(false)
+  mustChangePassword Boolean  @default(false)
+  preferredLanguage String    @default("en") // en, te, hi, kn, ta, mr
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  patient         Patient?
+  doctor          Doctor?
+  admin           Admin?
+  sessions        Session[]
+  loginActivities LoginActivity[]
+  notifications   Notification[]
+
+  @@index([role])
+  @@index([status])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  expiresAt DateTime
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model LoginActivity {
+  id            String   @id @default(uuid())
+  userId        String
+  role          String
+  ipAddress     String?
+  userAgent     String?
+  location      String?
+  status        String // SUCCESS, FAILED
+  failureReason String?
+  timestamp     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// -------------------------------------------------------------
+// Patients & Health Profiles
+// -------------------------------------------------------------
+
+model Patient {
+  id                 String    @id @default(uuid())
+  userId             String    @unique
+  healthId           String    @unique // e.g. HP-100245
+  abhaId             String?   @unique // e.g. 14-digit ABHA ID (12-3456-7890-1234)
+  fullName           String
+  dob                String // YYYY-MM-DD
+  gender             String // Male, Female, Other
+  bloodGroup         String // A+, O+, B+, AB+, A-, O-, B-, AB-
+  address            String
+  city               String
+  state              String
+  country            String    @default("India")
+  pincode            String
+  govtIdType         String // Aadhaar, Passport, VoterID, DrivingLicense
+  govtIdNumberMasked String // e.g. "XXXX-XXXX-8921"
+  identityStatus     String    @default("VERIFIED") // VERIFIED, PENDING, FAILED
+  identityVerifiedAt DateTime?
+  height             Float? // in cm
+  weight             Float? // in kg
+  emergencyNotes     String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  healthProfile      HealthProfile?
+  medicalRecords     MedicalRecord[]
+  prescriptions      Prescription[]
+  labReports         LabReport[]
+  consultations      Consultation[]
+  appointments       Appointment[]
+  accessRequests     AccessRequest[]
+  permissions        Permission[]
+  emergencyContacts  EmergencyContact[]
+  emergencySessions  EmergencySession[]
+  correctionRequests CorrectionRequest[]
+  conditions         MedicalCondition[]
+  allergies          Allergy[]
+  medications        Medication[]
+
+  @@index([healthId])
+  @@index([abhaId])
+}
+
+model HealthProfile {
+  id                String   @id @default(uuid())
+  patientId         String   @unique
+  bloodGroup        String
+  height            Float?
+  weight            Float?
+  allergiesSummary  String?
+  conditionsSummary String?
+  medicinesSummary  String?
+  emergencyNotes    String?
+  lastUpdated       DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model MedicalCondition {
+  id            String   @id @default(uuid())
+  patientId     String
+  conditionName String
+  diagnosedDate String
+  status        String   @default("ACTIVE") // ACTIVE, RESOLVED, CHRONIC
+  doctorName    String?
+  hospitalName  String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+}
+
+model Allergy {
+  id            String   @id @default(uuid())
+  patientId     String
+  allergen      String
+  allergyType   String // Food, Drug, Environmental, Other
+  severity      String   @default("MODERATE") // MILD, MODERATE, SEVERE, LIFE_THREATENING
+  reaction      String?
+  diagnosedDate String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+}
+
+model Medication {
+  id             String    @id @default(uuid())
+  patientId      String
+  medicineName   String
+  dosage         String // e.g., "500 mg"
+  frequency      String // e.g., "Twice daily"
+  timingSlot     String    @default("MORNING") // MORNING, AFTERNOON, EVENING, NIGHT
+  duration       String? // e.g., "14 days"
+  instructions   String? // e.g., "Take after food"
+  startDate      String
+  endDate        String?
+  status         String    @default("ACTIVE") // ACTIVE, TAKEN, SKIPPED, SNOOZED, PAUSED, COMPLETED
+  prescriptionId String?
+  lastActionDate DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([timingSlot])
+  @@index([status])
+}
+
+// -------------------------------------------------------------
+// Doctors, Hospitals & Affiliations
+// -------------------------------------------------------------
+
+model Doctor {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  fullName            String
+  registrationNumber  String   @unique // Medical Council Registration Number
+  specialization      String // Cardiology, Dermatology, Neurology, etc.
+  qualifications      String // MBBS, MD, MS, DM
+  experienceYears     Int      @default(5)
+  hospitalAffiliation String?
+  department          String?
+  languages           String   @default("English, Hindi")
+  profilePhoto        String?
+  govtIdStatus        String   @default("VERIFIED") // VERIFIED, PENDING, REJECTED
+  degreeStatus        String   @default("VERIFIED")
+  experienceDocStatus String   @default("VERIFIED")
+  regStatus           String   @default("PENDING") // PENDING, APPROVED, REJECTED, SUSPENDED, EXPIRED
+  rejectionReason     String?
+  verificationNotes   String?
+  govMatchStatus      String?  @default("PENDING") // PENDING, GOVERNMENT_MATCHED, GOVERNMENT_MISMATCH
+  govMismatchDetails  String?
+  mustChangePassword  Boolean  @default(false)
+  dob                 String?
+  gender              String?
+  address             String?
+  city                String?
+  state               String?
+  country             String?  @default("India")
+  pincode             String?
+  doctorIdNumber      String?
+  authority           String?
+  authorityType       String?  // State Medical Council, Central Authority
+  registrationState   String?
+  university          String?
+  certificatesJson    String?
+  workingDays         String   @default("Mon,Tue,Wed,Thu,Fri,Sat")
+  workingHours        String   @default("09:00 AM - 05:00 PM")
+  appointmentDuration Int      @default(30) // minutes
+  consultationTypes   String   @default("IN_PERSON,ONLINE")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user               User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  affiliations       DoctorHospitalAffiliation[]
+  consultations      Consultation[]
+  prescriptions      Prescription[]
+  labReports         LabReport[]
+  appointments       Appointment[]
+  accessRequests     AccessRequest[]
+  permissions        Permission[]
+  emergencySessions  EmergencySession[]
+  correctionRequests CorrectionRequest[]
+
+  @@index([registrationNumber])
+  @@index([specialization])
+  @@index([regStatus])
+}
+
+model Hospital {
+  id                 String   @id @default(uuid())
+  name               String
+  address            String
+  city               String
+  state              String
+  pincode            String
+  phone              String
+  email              String
+  emergencyAvailable Boolean  @default(true)
+  emergencyPhone     String?
+  hours              String   @default("24/7")
+  status             String   @default("ACTIVE") // ACTIVE, INACTIVE
+  verified           Boolean  @default(true)
+  latitude           Float?
+  longitude          Float?
+  type               String   @default("Multi-Specialty")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  departments        HospitalDepartment[]
+  doctorAffiliations DoctorHospitalAffiliation[]
+  appointments       Appointment[]
+  consultations      Consultation[]
+  prescriptions      Prescription[]
+  labReports         LabReport[]
+  accessRequests     AccessRequest[]
+  permissions        Permission[]
+  emergencySessions  EmergencySession[]
+
+  @@index([city])
+  @@index([status])
+}
+
+model HospitalDepartment {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  name        String
+  description String?
+  headDoctor  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@index([hospitalId])
+}
+
+model DoctorHospitalAffiliation {
+  id         String   @id @default(uuid())
+  doctorId   String
+  hospitalId String
+  department String
+  role       String   @default("Senior Consultant")
+  startDate  String
+  status     String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  doctor   Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@index([doctorId])
+  @@index([hospitalId])
+}
+
+model Admin {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  fullName   String
+  department String   @default("Security & Compliance")
+  roleTitle  String   @default("Chief Security Administrator")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// -------------------------------------------------------------
+// Medical Records, Prescriptions, Labs, Consultations & Versions
+// -------------------------------------------------------------
+
+model MedicalRecord {
+  id                    String   @id @default(uuid())
+  patientId             String
+  recordType            String // CONSULTATION, PRESCRIPTION, LAB_REPORT, IMMUNIZATION, SURGERY, ALLERGY, CONDITION
+  title                 String
+  description           String
+  date                  String // YYYY-MM-DD
+  doctorId              String?
+  hospitalId            String?
+  currentVersionNumber  Int      @default(1)
+  currentHash           String // SHA-256 canonical hash
+  previousHash          String?
+  blockchainTxId        String?
+  blockchainStatus      String   @default("VERIFIED") // VERIFIED, PENDING, INTEGRITY_FAILURE
+  isEmergencyAccessible Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  patient  Patient                @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  versions MedicalRecordVersion[]
+
+  @@index([patientId])
+  @@index([recordType])
+  @@index([blockchainStatus])
+}
+
+model MedicalRecordVersion {
+  id                String   @id @default(uuid())
+  recordId          String
+  versionNumber     Int
+  changedByUserId   String
+  changedByName     String
+  changeReason      String
+  changeSummary     String
+  canonicalDataJson String // Serialized canonical JSON representation
+  hash              String // SHA-256
+  previousHash      String?
+  blockchainTxId    String?
+  blockchainStatus  String   @default("VERIFIED")
+  createdAt         DateTime @default(now())
+
+  medicalRecord MedicalRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([recordId])
+}
+
+model Prescription {
+  id                 String   @id @default(uuid())
+  prescriptionNumber String   @unique // e.g. RX-100245
+  patientId          String
+  doctorId           String
+  hospitalId         String?
+  consultationId     String?
+  diagnosis          String
+  notes              String?
+  recordHash         String // SHA-256 canonical hash
+  blockchainTxId     String?
+  blockchainStatus   String   @default("VERIFIED") // VERIFIED, PENDING, INTEGRITY_FAILURE
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  patient      Patient                @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor       Doctor                 @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  hospital     Hospital?              @relation(fields: [hospitalId], references: [id])
+  consultation Consultation?          @relation(fields: [consultationId], references: [id])
+  medicines    PrescriptionMedicine[]
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([prescriptionNumber])
+}
+
+model PrescriptionMedicine {
+  id              String   @id @default(uuid())
+  prescriptionId  String
+  medicineName    String
+  dosage          String // e.g. "500mg"
+  frequency       String // e.g. "Once a day", "Twice a day"
+  timingMorning   Boolean  @default(false)
+  timingAfternoon Boolean  @default(false)
+  timingEvening   Boolean  @default(false)
+  timingNight     Boolean  @default(false)
+  duration        String // e.g. "7 days"
+  instructions    String? // e.g. "Take after breakfast"
+  createdAt       DateTime @default(now())
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@index([prescriptionId])
+}
+
+model LabReport {
+  id                String   @id @default(uuid())
+  reportNumber      String   @unique // e.g. LR-2031
+  patientId         String
+  doctorId          String?
+  hospitalId        String?
+  testName          String // Complete Blood Count, Lipid Profile, etc.
+  category          String // Pathology, Radiology, Biochemistry, etc.
+  sampleDate        String
+  resultDate        String
+  laboratoryName    String
+  technicianName    String?
+  summary           String
+  findingsJson      String? // JSON structured key-value test results
+  status            String   @default("COMPLETED") // COMPLETED, PENDING, VERIFIED
+  fileUrl           String?
+  fileType          String?  @default("application/pdf")
+  fileSize          String?  @default("1.8 MB")
+  canonicalDataJson String
+  recordHash        String // SHA-256
+  blockchainTxId    String?
+  blockchainStatus  String   @default("VERIFIED") // VERIFIED, PENDING, INTEGRITY_FAILURE
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  patient  Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor   Doctor?   @relation(fields: [doctorId], references: [id])
+  hospital Hospital? @relation(fields: [hospitalId], references: [id])
+
+  @@index([patientId])
+  @@index([testName])
+}
+
+model Consultation {
+  id                 String   @id @default(uuid())
+  consultationNumber String   @unique // e.g. CON-8901
+  appointmentId      String?
+  patientId          String
+  doctorId           String
+  hospitalId         String?
+  date               String
+  time               String
+  consultationType   String   @default("IN_PERSON") // IN_PERSON, ONLINE
+  symptoms           String
+  observations       String
+  vitalsJson         String? // BP, Pulse, Temp, SpO2, RespRate, Weight
+  diagnosis          String
+  treatmentPlan      String
+  clinicalNotes      String?
+  followUpDate       String?
+  status             String   @default("COMPLETED") // COMPLETED, IN_PROGRESS, CANCELLED
+  recordHash         String // SHA-256
+  blockchainTxId     String?
+  blockchainStatus   String   @default("VERIFIED")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  patient       Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor        Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  hospital      Hospital?      @relation(fields: [hospitalId], references: [id])
+  appointment   Appointment?   @relation(fields: [appointmentId], references: [id])
+  prescriptions Prescription[]
+
+  @@index([patientId])
+  @@index([doctorId])
+}
+
+model Appointment {
+  id                String   @id @default(uuid())
+  appointmentNumber String   @unique // e.g. APT-4521
+  patientId         String
+  doctorId          String
+  hospitalId        String
+  department        String
+  date              String // YYYY-MM-DD
+  timeSlot          String // e.g. "10:30 AM"
+  appointmentType   String   @default("IN_PERSON") // IN_PERSON, ONLINE
+  reason            String
+  status            String   @default("CONFIRMED") // CONFIRMED, COMPLETED, CANCELLED, RESCHEDULED
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  patient       Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor        Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  hospital      Hospital       @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  consultations Consultation[]
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([hospitalId])
+  @@index([status])
+}
+
+// -------------------------------------------------------------
+// Access Permissions & Emergency
+// -------------------------------------------------------------
+
+model AccessRequest {
+  id                String    @id @default(uuid())
+  patientId         String
+  doctorId          String
+  hospitalId        String?
+  reason            String
+  scopeJson         String // JSON array e.g. ["CONSULTATIONS", "PRESCRIPTIONS", "LAB_REPORTS"]
+  requestedDuration String // "24_HOURS", "7_DAYS", "30_DAYS", "CUSTOM"
+  durationDays      Int       @default(7)
+  status            String    @default("PENDING") // PENDING, APPROVED, REJECTED, EXPIRED, REVOKED
+  rejectionReason   String?
+  expiresAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  patient     Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor      Doctor       @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  hospital    Hospital?    @relation(fields: [hospitalId], references: [id])
+  permissions Permission[]
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([status])
+}
+
+model Permission {
+  id                String    @id @default(uuid())
+  patientId         String
+  doctorId          String
+  hospitalId        String?
+  accessRequestId   String?
+  scopeJson         String // JSON array of approved record categories
+  approvedScope     String // e.g. "Consultations, Prescriptions, Lab Reports"
+  startDate         DateTime  @default(now())
+  expiresAt         DateTime? // Nullable: null indicates "Forever" / no expiry access
+  status            String    @default("ACTIVE") // ACTIVE, EXPIRED, REVOKED
+  approvedAt        DateTime  @default(now())
+  revokedAt         DateTime?
+  revokeReason      String?
+  blockchainProofId String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  patient       Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor        Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  hospital      Hospital?      @relation(fields: [hospitalId], references: [id])
+  accessRequest AccessRequest? @relation(fields: [accessRequestId], references: [id])
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([status])
+}
+
+model EmergencyContact {
+  id                  String   @id @default(uuid())
+  patientId           String
+  name                String
+  relationship        String // Spouse, Parent, Child, Sibling, Friend, Other
+  phone               String
+  email               String?
+  isRegisteredPatient Boolean  @default(false)
+  registeredPatientId String? // If they have an existing patient account
+  isPrimary           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+}
+
+model EmergencySession {
+  id                     String    @id @default(uuid())
+  sessionNumber          String    @unique // e.g. EMG-7801
+  patientId              String
+  doctorId               String
+  hospitalId             String
+  reason                 String
+  doctorVerified         Boolean   @default(true)
+  hospitalVerified       Boolean   @default(true)
+  startTime              DateTime  @default(now())
+  endTime                DateTime?
+  autoExpiryTime         DateTime
+  status                 String    @default("ACTIVE") // ACTIVE, ENDED_MANUALLY, EXPIRED
+  emergencyTreatmentNote String?
+  treatmentNoteHash      String?
+  blockchainTxId         String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  patient  Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor   Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([status])
+}
+
+// -------------------------------------------------------------
+// Audit Trail, Security Alerts & Blockchain Proofs
+// -------------------------------------------------------------
+
+model AuditEvent {
+  id                           String   @id @default(uuid())
+  actorId                      String
+  actorRole                    String // PATIENT, DOCTOR, ADMIN, SYSTEM
+  actorName                    String
+  patientId                    String?
+  patientHealthId              String?
+  doctorId                     String?
+  doctorName                   String?
+  hospitalId                   String?
+  hospitalName                 String?
+  department                   String?
+  recordId                     String?
+  documentId                   String?
+  documentType                 String? // ALLERGY, MEDICATION, PRESCRIPTION, LAB_REPORT, CONSULTATION, EMERGENCY_NOTE, ACCESS_PERMISSION
+  action                       String // VIEW, DOWNLOAD, CREATE, MODIFY, APPROVE, REJECT, REVOKE, EMERGENCY_ACCESS, EMERGENCY_NOTE, LOGIN, LOGOUT
+  accessType                   String // NORMAL, EMERGENCY, CONSENT_GRANTED, UNAUTHORIZED_ATTEMPT
+  reason                       String?
+  authorizationStatus          String   @default("AUTHORIZED") // AUTHORIZED, DENIED, EMERGENCY_OVERRIDE
+  consentStatus                String   @default("EXPLICIT_CONSENT") // EXPLICIT_CONSENT, EMERGENCY_BYPASS, NOT_REQUIRED
+  timestamp                    DateTime @default(now())
+  sessionId                    String?
+  ipAddress                    String?  @default("127.0.0.1")
+  userAgent                    String?
+  previousHash                 String?
+  newHash                      String?
+  blockchainTxId               String?
+  blockchainVerificationStatus String   @default("VERIFIED") // VERIFIED, PENDING, FAILED
+  result                       String   @default("SUCCESS") // SUCCESS, FAILURE, BLOCKED
+  severity                     String   @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL
+  createdAt                    DateTime @default(now())
+
+  @@index([patientId])
+  @@index([actorId])
+  @@index([action])
+  @@index([accessType])
+  @@index([timestamp])
+}
+
+model SecurityAlert {
+  id                String   @id @default(uuid())
+  alertType         String // UNAUTHORIZED_ACCESS_ATTEMPT, UNAUTHORIZED_MODIFICATION_ATTEMPT, HASH_MISMATCH, TAMPERING_DETECTED, SUSPICIOUS_LOGIN, FREQUENT_EMERGENCY_ACCESS
+  severity          String // LOW, MEDIUM, HIGH, CRITICAL
+  title             String
+  description       String
+  actorId           String?
+  actorName         String?
+  patientId         String?
+  recordId          String?
+  reason            String?
+  expectedHash      String?
+  actualHash        String?
+  auditEventId      String?
+  blockchainTxId    String?
+  status            String   @default("NEW") // NEW, INVESTIGATING, REVIEWED, RESOLVED
+  resolvedByAdminId String?
+  resolutionNotes   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+  @@index([severity])
+  @@index([alertType])
+}
+
+model BlockchainProof {
+  id              String   @id @default(uuid())
+  recordId        String // Reference ID in the database
+  recordType      String // PRESCRIPTION, LAB_REPORT, CONSULTATION, EMERGENCY_NOTE, ACCESS_PERMISSION, AUDIT_EVENT
+  eventType       String // RECORD_CREATED, RECORD_MODIFIED, ACCESS_GRANTED, ACCESS_REVOKED, EMERGENCY_ACCESS, TAMPERING_DETECTED
+  canonicalHash   String // SHA-256
+  transactionId   String   @unique
+  blockNumber     Int      @default(1)
+  contractAddress String?
+  network         String   @default("Hardhat-Local-EVM")
+  status          String   @default("CONFIRMED") // CONFIRMED, PENDING, FAILED
+  recordedBy      String // Wallet address or service signer
+  timestamp       DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@index([recordId])
+  @@index([canonicalHash])
+  @@index([eventType])
+}
+
+model CorrectionRequest {
+  id               String   @id @default(uuid())
+  patientId        String
+  doctorId         String?
+  recordId         String
+  recordType       String
+  fieldName        String
+  originalValue    String
+  requestedValue   String
+  reason           String
+  supportingDocUrl String?
+  status           String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+  reviewedBy       String?
+  reviewNotes      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor  Doctor? @relation(fields: [doctorId], references: [id])
+
+  @@index([patientId])
+  @@index([status])
+}
+
+model Notification {
+  id           String   @id @default(uuid())
+  userId       String
+  title        String
+  message      String
+  type         String // APPOINTMENT, MEDICINE, DOCTOR_ACCESS, LAB, PRESCRIPTION, EMERGENCY, SECURITY, RECORD
+  category     String   @default("GENERAL")
+  priority     String   @default("NORMAL") // NORMAL, HIGH, CRITICAL
+  isRead       Boolean  @default(false)
+  linkRoute    String?
+  metadataJson String?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+}
