@@ -1,25 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Lock,
   Plus,
-  Search,
   CheckCircle2,
   Clock,
-  XCircle,
   ArrowRight,
-  Shield,
-  Stethoscope,
-  Send,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { Modal } from '../../components/common/Modal';
 import { useToast } from '../../contexts/ToastContext';
 import {
   ScrollReveal,
-  ScrollRevealGroup,
-  PremiumCard,
-  GlowCard,
 } from '../../components/common/ScrollReveal';
+import { api } from '../../services/api';
 
 export interface OutboundRequest {
   id: string;
@@ -29,16 +23,19 @@ export interface OutboundRequest {
   reason: string;
   scopes: string[];
   durationHours: number;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | string;
   expiresIn?: string;
 }
 
 export const DoctorAccessRequestsPage: React.FC = () => {
   const { addToast } = useToast();
   const [showNewModal, setShowNewModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [pingingId, setPingingId] = useState<string | null>(null);
 
   // Form states
-  const [newHealthId, setNewHealthId] = useState('HP-100245');
+  const [newHealthId, setNewHealthId] = useState('');
   const [newReason, setNewReason] = useState('Cardiology follow-up & medication review');
   const [newDuration, setNewDuration] = useState('24');
   const [newScopes, setNewScopes] = useState<string[]>([
@@ -47,56 +44,130 @@ export const DoctorAccessRequestsPage: React.FC = () => {
     'Biochemistry Lab Reports',
   ]);
 
-  const [requests, setRequests] = useState<OutboundRequest[]>([
-    {
-      id: 'REQ-101',
-      patientName: 'Rahul Sharma',
-      healthId: 'HP-100245',
-      requestedAt: '10 minutes ago',
-      reason: 'Review baseline vitals and lipid panel for blood pressure management.',
-      scopes: ['Cardiology Records', 'Prescriptions', 'Biochemistry Lab Reports'],
-      durationHours: 24,
-      status: 'APPROVED',
-      expiresIn: '23h 45m remaining',
-    },
-    {
-      id: 'REQ-098',
-      patientName: 'Mohith Varma',
-      healthId: 'HP-100246',
-      requestedAt: '1 day ago',
-      reason: 'Pre-consultation cardiac screening evaluation.',
-      scopes: ['Cardiology Records'],
-      durationHours: 48,
-      status: 'PENDING',
-    },
-    {
-      id: 'REQ-084',
-      patientName: 'Sneha Patel',
-      healthId: 'HP-100247',
-      requestedAt: '3 days ago',
-      reason: 'Specialist consultation follow-up.',
-      scopes: ['Prescriptions'],
-      durationHours: 24,
-      status: 'EXPIRED',
-    },
-  ]);
+  const [requests, setRequests] = useState<OutboundRequest[]>([]);
 
-  const handleCreateRequest = (e: React.FormEvent) => {
+  const formatRequestedTime = (createdAt?: string | Date): string => {
+    if (!createdAt) return 'Recently';
+    const date = new Date(createdAt);
+    if (isNaN(date.getTime())) return 'Recently';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays === 1) return '1 day ago';
+    return `${diffDays} days ago`;
+  };
+
+  const formatExpiresIn = (expiresAt?: string | Date | null, status?: string): string | undefined => {
+    if (!expiresAt || status !== 'APPROVED') return undefined;
+    const exp = new Date(expiresAt);
+    if (isNaN(exp.getTime())) return undefined;
+    const now = new Date();
+    const diffMs = exp.getTime() - now.getTime();
+    if (diffMs <= 0) return 'Expired';
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    if (hours > 0) return `${hours}h ${mins}m remaining`;
+    return `${mins}m remaining`;
+  };
+
+  const fetchRequests = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.listDoctorAccessRequests();
+      const rawRequests: any[] = res.requests || res.data || [];
+      const mapped: OutboundRequest[] = rawRequests.map((req: any) => {
+        let scopes: string[] = [];
+        try {
+          if (typeof req.scopeJson === 'string') {
+            const parsed = JSON.parse(req.scopeJson);
+            scopes = Array.isArray(parsed) ? parsed : [req.scopeJson];
+          } else if (Array.isArray(req.scopeJson)) {
+            scopes = req.scopeJson;
+          } else {
+            scopes = ['Consultations', 'Prescriptions', 'Lab Reports'];
+          }
+        } catch {
+          scopes = req.scopeJson ? [String(req.scopeJson)] : ['Consultations', 'Prescriptions', 'Lab Reports'];
+        }
+
+        const durationHours = req.durationDays ? req.durationDays * 24 : 24;
+
+        return {
+          id: req.id,
+          patientName: req.patient?.fullName || req.patientName || 'Patient',
+          healthId: req.patient?.healthId || req.patientHealthId || '',
+          requestedAt: formatRequestedTime(req.createdAt),
+          reason: req.reason || 'Clinical Consultation & EMR Review',
+          scopes,
+          durationHours,
+          status: req.status || 'PENDING',
+          expiresIn: formatExpiresIn(req.expiresAt, req.status),
+        };
+      });
+
+      setRequests(mapped);
+    } catch (err: any) {
+      console.error('Failed to load doctor access requests:', err);
+      addToast('error', err.message || 'Failed to load access requests.');
+    } finally {
+      setLoading(false);
+    }
+  }, [addToast]);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
+
+  const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newReq: OutboundRequest = {
-      id: `REQ-${Math.floor(105 + Math.random() * 900)}`,
-      patientName: newHealthId === 'HP-100245' ? 'Rahul Sharma' : 'Registered Patient',
-      healthId: newHealthId,
-      requestedAt: 'Just now',
-      reason: newReason,
-      scopes: newScopes,
-      durationHours: Number(newDuration),
-      status: 'PENDING',
-    };
+    if (!newHealthId.trim()) {
+      addToast('error', 'Please enter a valid Patient Health ID.');
+      return;
+    }
+    if (newScopes.length === 0) {
+      addToast('error', 'Please select at least one record scope.');
+      return;
+    }
 
-    setRequests([newReq, ...requests]);
-    setShowNewModal(false);
-    addToast('success', `EMR access request dispatched to patient ${newHealthId}!`);
+    try {
+      setSubmitting(true);
+      const durationLabel = `${newDuration} Hours`;
+      await api.createDoctorAccessRequest(
+        newHealthId.trim(),
+        newReason.trim(),
+        newScopes,
+        durationLabel
+      );
+
+      await fetchRequests();
+      setShowNewModal(false);
+      setNewHealthId('');
+      addToast('success', `EMR access request dispatched to patient ${newHealthId}!`);
+    } catch (err: any) {
+      console.error('Error creating access request:', err);
+      addToast('error', err.message || 'Failed to create access request.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePingPatient = async (reqId: string, patientName: string) => {
+    try {
+      setPingingId(reqId);
+      await api.pingPatientAccessRequest(reqId);
+      addToast('success', `Reminder notification resent to ${patientName}.`);
+    } catch (err: any) {
+      console.error('Error pinging patient:', err);
+      addToast('error', err.message || 'Failed to send reminder notification.');
+    } finally {
+      setPingingId(null);
+    }
   };
 
   const toggleScope = (scope: string) => {
@@ -106,7 +177,7 @@ export const DoctorAccessRequestsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 pb-24 text-white antialiased">
+    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 pb-24 text-white antialiased">
       {/* Header */}
       <ScrollReveal direction="left">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -122,13 +193,23 @@ export const DoctorAccessRequestsPage: React.FC = () => {
             </p>
           </div>
 
-          <button
-            onClick={() => setShowNewModal(true)}
-            className="px-6 py-3 rounded-2xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-500 transition-all flex items-center gap-2 shadow-lg shadow-purple-600/20 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New EMR Request</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchRequests}
+              disabled={loading}
+              title="Refresh access requests"
+              className="p-3 rounded-2xl border border-white/10 bg-white/[0.04] text-white/70 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={() => setShowNewModal(true)}
+              className="px-6 py-3 rounded-2xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-500 transition-all flex items-center gap-2 shadow-lg shadow-purple-600/20 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New EMR Request</span>
+            </button>
+          </div>
         </div>
       </ScrollReveal>
 
@@ -147,70 +228,103 @@ export const DoctorAccessRequestsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.06] text-white/70">
-                {requests.map((req) => (
-                  <tr key={req.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="py-4 px-6">
-                      <div className="font-bold text-white text-sm">{req.patientName}</div>
-                      <div className="text-xs font-mono text-teal-400 mt-0.5">{req.healthId}</div>
-                      <div className="text-[10px] text-white/40 mt-0.5">{req.requestedAt}</div>
-                    </td>
-
-                    <td className="py-4 px-4">
-                      <div className="flex flex-wrap gap-1 max-w-xs">
-                        {req.scopes.map((s, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2.5 py-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/80 text-[10px] font-semibold"
-                          >
-                            {s}
-                          </span>
-                        ))}
+                {loading && requests.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-white/40">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+                        <span>Loading real access requests from database...</span>
                       </div>
                     </td>
-
-                    <td className="py-4 px-4">
-                      <p className="text-white font-medium line-clamp-1">"{req.reason}"</p>
-                      <p className="text-[11px] text-white/40 mt-0.5">{req.durationHours} Hours duration</p>
-                    </td>
-
-                    <td className="py-4 px-4">
-                      {req.status === 'APPROVED' ? (
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 flex items-center gap-1 w-fit">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                          Active ({req.expiresIn})
-                        </span>
-                      ) : req.status === 'PENDING' ? (
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center gap-1 w-fit">
-                          <Clock className="w-3.5 h-3.5 text-amber-400" />
-                          Pending Patient Approval
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/[0.04] text-white/40 border border-white/10 w-fit">
-                          {req.status}
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="py-4 px-6 text-right whitespace-nowrap">
-                      {req.status === 'APPROVED' ? (
-                        <Link
-                          to={`/doctor/patients/${req.healthId}/emr`}
-                          className="px-4 py-2 rounded-xl bg-teal-600 text-white font-bold hover:bg-teal-500 transition-all shadow-md shadow-teal-600/20 inline-flex items-center gap-1"
-                        >
-                          <span>Open EMR</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </Link>
-                      ) : (
-                        <button
-                          onClick={() => addToast('info', 'Reminder notification resent to patient device.')}
-                          className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.02] text-white/70 font-bold hover:bg-white/[0.08] hover:text-white transition-colors cursor-pointer"
-                        >
-                          Ping Patient
-                        </button>
-                      )}
+                  </tr>
+                ) : requests.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-white/40">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Clock className="w-6 h-6 text-white/20" />
+                        <span className="text-sm font-medium text-white/60">No outbound access requests found</span>
+                        <span className="text-xs text-white/40">Click "New EMR Request" to request access clearance from a patient.</span>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  requests.map((req) => (
+                    <tr key={req.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="py-4 px-6">
+                        <div className="font-bold text-white text-sm">{req.patientName}</div>
+                        <div className="text-xs font-mono text-teal-400 mt-0.5">{req.healthId}</div>
+                        <div className="text-[10px] text-white/40 mt-0.5">{req.requestedAt}</div>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {req.scopes.map((s, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2.5 py-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/80 text-[10px] font-semibold"
+                            >
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <p className="text-white font-medium line-clamp-1">"{req.reason}"</p>
+                        <p className="text-[11px] text-white/40 mt-0.5">{req.durationHours} Hours duration</p>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        {req.status === 'APPROVED' ? (
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 flex items-center gap-1 w-fit">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                            Active {req.expiresIn ? `(${req.expiresIn})` : ''}
+                          </span>
+                        ) : req.status === 'PENDING' ? (
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center gap-1 w-fit">
+                            <Clock className="w-3.5 h-3.5 text-amber-400" />
+                            Pending Patient Approval
+                          </span>
+                        ) : req.status === 'REJECTED' ? (
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 w-fit">
+                            Rejected
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/[0.04] text-white/40 border border-white/10 w-fit">
+                            {req.status}
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-4 px-6 text-right whitespace-nowrap">
+                        {req.status === 'APPROVED' ? (
+                          <Link
+                            to={`/doctor/patients/${req.healthId}/emr`}
+                            className="px-4 py-2 rounded-xl bg-teal-600 text-white font-bold hover:bg-teal-500 transition-all shadow-md shadow-teal-600/20 inline-flex items-center gap-1"
+                          >
+                            <span>Open EMR</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
+                        ) : (
+                          <button
+                            onClick={() => handlePingPatient(req.id, req.patientName)}
+                            disabled={pingingId === req.id || req.status !== 'PENDING'}
+                            className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.02] text-white/70 font-bold hover:bg-white/[0.08] hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+                          >
+                            {pingingId === req.id ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />
+                                <span>Pinging...</span>
+                              </>
+                            ) : (
+                              <span>Ping Patient</span>
+                            )}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -300,15 +414,24 @@ export const DoctorAccessRequestsPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowNewModal(false)}
-              className="px-4 py-2.5 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/[0.05] font-bold cursor-pointer"
+              disabled={submitting}
+              className="px-4 py-2.5 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/[0.05] font-bold cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-500 shadow-md shadow-purple-600/20 cursor-pointer"
+              disabled={submitting}
+              className="px-5 py-2.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-500 shadow-md shadow-purple-600/20 cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
             >
-              Dispatch Request
+              {submitting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Dispatching...</span>
+                </>
+              ) : (
+                <span>Dispatch Request</span>
+              )}
             </button>
           </div>
         </form>

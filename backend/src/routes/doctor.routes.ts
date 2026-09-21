@@ -34,6 +34,9 @@ router.get('/patients/search', (req, res) => doctorController.searchPatients(req
 router.post('/patients/search', (req, res) => doctorController.searchPatients(req, res));
 router.post('/access-requests', (req, res) => doctorController.createAccessRequest(req, res));
 router.get('/access-requests', (req, res) => doctorController.listAccessRequests(req, res));
+router.post('/access-requests/:id/ping', (req, res) => doctorController.pingPatient(req, res));
+router.post('/access-requests/:id/remind', (req, res) => doctorController.pingPatient(req, res));
+router.post('/access-requests/ping', (req, res) => doctorController.pingPatient(req, res));
 
 // Authorized EMR Access (Scope & Permission Enforced)
 router.get('/active-patients', (req, res) => doctorController.getAuthorizedPatients(req, res));

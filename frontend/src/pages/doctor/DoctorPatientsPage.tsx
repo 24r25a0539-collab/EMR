@@ -378,7 +378,7 @@ export const DoctorPatientsPage: React.FC = () => {
   const currentConfig = getFilterConfig();
 
   return (
-    <div className="space-y-8 pb-24 text-white antialiased">
+    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 pb-24 text-white antialiased">
       {/* Header */}
       <ScrollReveal direction="left">
         <div>
@@ -397,7 +397,7 @@ export const DoctorPatientsPage: React.FC = () => {
 
       {/* Main Search Panel */}
       <ScrollReveal direction="bottom" delay={0.08}>
-        <div className="bg-[#0B0B0D] p-6 sm:p-8 rounded-[32px] border border-white/[0.08] shadow-2xl space-y-6">
+        <div className="bg-[#0B0B0D] p-5 sm:p-8 rounded-[32px] border border-white/[0.08] shadow-2xl space-y-6">
           {/* Search Type Tabs */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-white/40 mb-2.5">

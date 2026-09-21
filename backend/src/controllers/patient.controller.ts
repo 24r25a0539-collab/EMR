@@ -76,7 +76,8 @@ export class PatientController {
    */
   async updateProfile(req: Request, res: Response): Promise<void> {
     const patientId = req.user?.patientId;
-    const { address, city, state, pincode, height, weight, emergencyNotes: newNotes, identificationMarks } = req.body;
+    const { fullName, name, address, city, state, pincode, height, weight, emergencyNotes: newNotes, identificationMarks } = req.body;
+    const resolvedFullName = (fullName || name)?.trim();
 
     if (!patientId) {
       res.status(403).json({ success: false, error: 'PATIENT_PROFILE_REQUIRED' });
@@ -97,6 +98,7 @@ export class PatientController {
     const updated = await prisma.patient.update({
       where: { id: patientId },
       data: {
+        fullName: resolvedFullName || undefined,
         address,
         city,
         state,

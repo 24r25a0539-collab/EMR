@@ -512,6 +512,100 @@ export class DoctorController {
   }
 
   /**
+   * Ping / remind patient regarding an existing pending access request.
+   * Persists real notification in database and logs audit event.
+   */
+  async pingPatient(req: Request, res: Response): Promise<void> {
+    const doctorId = req.user?.doctorId;
+    const id = (req.params.id || req.body?.requestId || req.body?.id) as string;
+
+    if (!doctorId) {
+      res.status(403).json({ success: false, error: 'DOCTOR_PROFILE_REQUIRED' });
+      return;
+    }
+
+    if (!id) {
+      res.status(400).json({ success: false, error: 'Access Request ID is required.' });
+      return;
+    }
+
+    const accessRequest = await prisma.accessRequest.findFirst({
+      where: {
+        id,
+        doctorId,
+      },
+      include: {
+        patient: {
+          include: {
+            user: true,
+          },
+        },
+        doctor: true,
+      },
+    });
+
+    if (!accessRequest) {
+      res.status(404).json({ success: false, error: 'Access request not found or unauthorized.' });
+      return;
+    }
+
+    if (accessRequest.status !== 'PENDING') {
+      res.status(400).json({
+        success: false,
+        error: 'REQUEST_NOT_PENDING',
+        message: `Cannot send reminder for an access request with status ${accessRequest.status}.`,
+      });
+      return;
+    }
+
+    const doctorName = accessRequest.doctor.fullName || req.user?.fullName || 'Dr. Practitioner';
+
+    // Persist real reminder notification in database
+    await prisma.notification.create({
+      data: {
+        userId: accessRequest.patient.userId,
+        title: 'Consent Reminder: EMR Access Request',
+        message: `Dr. ${doctorName} is awaiting your response to their EMR access request (${accessRequest.reason}). Please review and grant or deny access.`,
+        type: 'ACCESS_REQUEST',
+        category: 'ACCESS_REQUEST',
+        priority: 'HIGH',
+        linkRoute: `/patient/access-permissions?requestId=${accessRequest.id}`,
+        metadataJson: JSON.stringify({
+          requestId: accessRequest.id,
+          doctorId: accessRequest.doctorId,
+          doctorName,
+          healthId: accessRequest.patient.healthId,
+          reason: accessRequest.reason,
+          duration: accessRequest.requestedDuration,
+        }),
+        isRead: false,
+      },
+    });
+
+    await logAuditEvent({
+      actorId: req.user!.id,
+      actorRole: 'DOCTOR',
+      actorName: req.user!.fullName || accessRequest.doctor.fullName,
+      patientId: accessRequest.patientId,
+      patientHealthId: accessRequest.patient.healthId,
+      doctorId,
+      doctorName: accessRequest.doctor.fullName,
+      documentId: accessRequest.id,
+      documentType: 'ACCESS_PERMISSION',
+      action: 'MODIFY',
+      accessType: 'NORMAL',
+      reason: `Sent access request review reminder to patient ${accessRequest.patient.healthId}`,
+      authorizationStatus: 'AUTHORIZED',
+      ipAddress: req.ip as string,
+    });
+
+    res.json({
+      success: true,
+      message: `Reminder notification sent to patient ${accessRequest.patient.fullName}.`,
+    });
+  }
+
+  /**
    * Get authorized patient EMR records.
    * STRICTLY enforces active permission or active emergency session!
    * Returns ONLY records permitted by approved scopes.

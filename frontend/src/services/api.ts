@@ -390,6 +390,14 @@ export const api = {
     return handleResponse<any>(res);
   },
 
+  async pingPatientAccessRequest(requestId: string) {
+    const res = await fetch(`${API_BASE}/doctors/access-requests/${requestId}/ping`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    return handleResponse<any>(res);
+  },
+
   async getAuthorizedPatients() {
     const res = await fetch(`${API_BASE}/doctors/active-patients`, { headers: getHeaders() });
     return handleResponse<any>(res);

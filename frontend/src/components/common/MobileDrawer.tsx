@@ -21,6 +21,9 @@ import {
   Key,
   Clock,
   UserCheck,
+  Activity,
+  HelpCircle,
+  User,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -37,8 +40,10 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
 
   if (!isOpen) return null;
 
-  const activeLink = 'flex items-center gap-3 px-3 py-2.5 rounded-xl bg-blue-500/15 text-blue-400 font-bold border border-blue-500/30';
-  const inactiveLink = 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.06]';
+  const activeLink = 'flex items-center gap-3 px-3 py-2.5 rounded-xl bg-blue-500/15 text-blue-400 font-bold border border-blue-500/30 shadow-lg shadow-blue-500/10';
+  const inactiveLink = 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.06] border border-transparent transition-all';
+  const activeSubLink = 'flex items-center gap-3 px-3 py-2 rounded-xl text-blue-400 font-bold bg-blue-500/10 border-l-2 border-blue-400 text-xs transition-colors';
+  const inactiveSubLink = 'flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.06] text-xs transition-colors';
 
   return (
     <div className="fixed inset-0 z-50 lg:hidden flex page-fade-in">
@@ -62,7 +67,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.06]"
+            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors"
             aria-label="Close menu"
           >
             <X className="w-5 h-5" />
@@ -92,174 +97,257 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
         </div>
 
         {/* Nav Links */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-1 text-sm font-medium">
+        <div className="flex-1 overflow-y-auto p-4 space-y-1 text-sm font-medium pb-12">
+          {/* ================================= PATIENT MENU ================================= */}
           {role === 'PATIENT' && (
             <>
+              {/* 1. Home */}
               <NavLink
                 to="/patient/home"
                 onClick={onClose}
                 className={({ isActive }) => (isActive ? activeLink : inactiveLink)}
               >
-                <Home className="w-5 h-5" />
+                <Home className="w-5 h-5 flex-shrink-0" />
                 <span>{t('nav.home', 'Home')}</span>
               </NavLink>
 
-              <div className="pt-2 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3">
+              {/* 2. MY HEALTH */}
+              <div className="pt-3 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3">
                 {t('nav.myHealth', 'My Health')}
               </div>
               <NavLink
                 to="/patient/medical-history"
                 onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-white/[0.06] text-xs"
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
               >
-                <Heart className="w-4 h-4 text-cyan-400" />
+                <Heart className="w-4 h-4 text-cyan-400 flex-shrink-0" />
                 <span>{t('nav.medicalHistory', 'Medical History')}</span>
               </NavLink>
               <NavLink
                 to="/patient/consultations"
                 onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-white/[0.06] text-xs"
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
               >
-                <FileText className="w-4 h-4" />
+                <FileText className="w-4 h-4 flex-shrink-0" />
                 <span>{t('nav.consultations', 'Consultations')}</span>
               </NavLink>
               <NavLink
                 to="/patient/prescriptions"
                 onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-white/[0.06] text-xs"
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
               >
-                <Pill className="w-4 h-4" />
+                <Pill className="w-4 h-4 flex-shrink-0" />
                 <span>{t('nav.prescriptions', 'Prescriptions')}</span>
               </NavLink>
               <NavLink
                 to="/patient/lab-reports"
                 onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-white/[0.06] text-xs"
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
               >
-                <ClipboardList className="w-4 h-4" />
+                <ClipboardList className="w-4 h-4 flex-shrink-0" />
                 <span>{t('nav.labReports', 'Lab Reports')}</span>
               </NavLink>
               <NavLink
                 to="/patient/medicines"
                 onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-white/[0.06] text-xs"
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
               >
-                <Clock className="w-4 h-4" />
+                <Clock className="w-4 h-4 flex-shrink-0" />
                 <span>{t('nav.medicines', 'Medicines & Reminders')}</span>
               </NavLink>
 
-              <div className="pt-2 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3">
+              {/* 3. FIND CARE */}
+              <div className="pt-3 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3">
                 {t('nav.findCare', 'Find Care')}
               </div>
               <NavLink
                 to="/patient/appointments"
                 onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-white/[0.06] text-xs"
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
               >
-                <Calendar className="w-4 h-4" />
+                <Calendar className="w-4 h-4 flex-shrink-0" />
                 <span>{t('nav.appointments', 'Appointments')}</span>
               </NavLink>
               <NavLink
                 to="/patient/doctors"
                 onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-white/[0.06] text-xs"
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
               >
-                <Search className="w-4 h-4" />
+                <Search className="w-4 h-4 flex-shrink-0 text-teal-400" />
                 <span>{t('nav.doctors', 'Doctors')}</span>
               </NavLink>
               <NavLink
                 to="/patient/hospitals"
                 onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-white/[0.06] text-xs"
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
               >
-                <Building2 className="w-4 h-4" />
+                <Building2 className="w-4 h-4 flex-shrink-0" />
                 <span>{t('nav.hospitals', 'Hospitals')}</span>
               </NavLink>
 
-              <div className="pt-2 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3">
+              {/* 4. HEALTH ACTIVITY */}
+              <div className="pt-3 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3">
+                {t('nav.activity', 'Health Activity')}
+              </div>
+              <NavLink
+                to="/patient/health-calendar"
+                onClick={onClose}
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
+              >
+                <Calendar className="w-4 h-4 flex-shrink-0 text-blue-400" />
+                <span>{t('nav.calendar', 'Health Calendar')}</span>
+              </NavLink>
+              <NavLink
+                to="/patient/timeline"
+                onClick={onClose}
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
+              >
+                <Activity className="w-4 h-4 flex-shrink-0 text-blue-400" />
+                <span>{t('nav.timeline', 'Health Timeline')}</span>
+              </NavLink>
+
+              {/* 5. ACCESS & PRIVACY */}
+              <div className="pt-3 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3">
                 {t('nav.accessPrivacy', 'Access & Privacy')}
               </div>
               <NavLink
                 to="/patient/access-permissions"
                 onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-white/[0.06] text-xs"
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
               >
-                <Lock className="w-4 h-4" />
+                <Lock className="w-4 h-4 flex-shrink-0 text-purple-400" />
                 <span>{t('nav.permissions', 'Permissions')}</span>
+              </NavLink>
+              <NavLink
+                to="/patient/audit"
+                onClick={onClose}
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
+              >
+                <ClipboardList className="w-4 h-4 flex-shrink-0 text-purple-400" />
+                <span>{t('nav.audit', 'Audit Trail')}</span>
+              </NavLink>
+              <NavLink
+                to="/patient/security"
+                onClick={onClose}
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
+              >
+                <Key className="w-4 h-4 flex-shrink-0 text-purple-400" />
+                <span>{t('nav.security', 'Security')}</span>
               </NavLink>
               <NavLink
                 to="/patient/emergency"
                 onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-rose-400 hover:bg-rose-500/10 text-xs font-bold"
+                className={({ isActive }) =>
+                  isActive
+                    ? 'flex items-center gap-3 px-3 py-2 rounded-xl text-rose-400 font-bold bg-rose-500/15 border border-rose-500/30 text-xs shadow-lg shadow-rose-500/10'
+                    : 'flex items-center gap-3 px-3 py-2 rounded-xl text-rose-400 hover:bg-rose-500/10 text-xs font-bold transition-colors'
+                }
               >
-                <AlertCircle className="w-4 h-4 text-rose-400" />
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
                 <span>{t('nav.emergency', 'Emergency Care')}</span>
               </NavLink>
+
+              {/* 6. SUPPORT */}
+              <div className="pt-3 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3">
+                {t('nav.support', 'Support')}
+              </div>
               <NavLink
-                to="/patient/settings"
+                to="/patient/helpdesk"
                 onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-white/[0.06] text-xs"
+                className={({ isActive }) => (isActive ? activeSubLink : inactiveSubLink)}
               >
-                <Settings className="w-4 h-4" />
-                <span>{t('nav.settings', 'Settings')}</span>
+                <HelpCircle className="w-4 h-4 flex-shrink-0 text-emerald-400" />
+                <span>{t('nav.helpdesk', 'Help Desk')}</span>
               </NavLink>
+
+              {/* 7. Settings */}
+              <div className="pt-3 pb-1 border-t border-white/[0.06] mt-2">
+                <NavLink
+                  to="/patient/settings"
+                  onClick={onClose}
+                  className={({ isActive }) => (isActive ? activeLink : inactiveLink)}
+                >
+                  <Settings className="w-5 h-5 flex-shrink-0" />
+                  <span>{t('nav.settings', 'Settings')}</span>
+                </NavLink>
+              </div>
             </>
           )}
 
+          {/* ================================= DOCTOR MENU ================================= */}
           {role === 'DOCTOR' && (
             <>
               <NavLink to="/doctor/dashboard" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <Home className="w-5 h-5" /> {t('doc.dashboard', 'Dashboard')}
+                <Home className="w-5 h-5 flex-shrink-0" /> <span>{t('doc.dashboard', 'Dashboard')}</span>
               </NavLink>
               <NavLink to="/doctor/patients" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <Users className="w-5 h-5" /> {t('doc.patients', 'Patient Directory')}
+                <Users className="w-5 h-5 flex-shrink-0" /> <span>{t('doc.patients', 'Patient Directory')}</span>
               </NavLink>
               <NavLink to="/doctor/current-patient" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <UserCheck className="w-5 h-5 text-teal-400" /> Current Patient
+                <UserCheck className="w-5 h-5 flex-shrink-0 text-teal-400" /> <span>Current Patient</span>
               </NavLink>
               <NavLink to="/doctor/access-requests" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <Key className="w-5 h-5" /> {t('doc.requests', 'Access Requests')}
+                <Key className="w-5 h-5 flex-shrink-0" /> <span>{t('doc.requests', 'Access Requests')}</span>
               </NavLink>
               <NavLink to="/doctor/appointments" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <Calendar className="w-5 h-5" /> {t('nav.appointments', 'Appointments')}
+                <Calendar className="w-5 h-5 flex-shrink-0" /> <span>{t('nav.appointments', 'Appointments')}</span>
               </NavLink>
               <NavLink to="/doctor/consultation/new" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <Stethoscope className="w-5 h-5" /> {t('doc.consultations', 'Consultation Notes')}
+                <Stethoscope className="w-5 h-5 flex-shrink-0" /> <span>{t('doc.consultations', 'Consultation Notes')}</span>
               </NavLink>
               <NavLink to="/doctor/prescriptions" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <Pill className="w-5 h-5" /> {t('doc.prescriptions', 'Prescriptions')}
+                <Pill className="w-5 h-5 flex-shrink-0" /> <span>{t('doc.prescriptions', 'Prescriptions')}</span>
               </NavLink>
-              <NavLink to="/doctor/emergency" onClick={onClose} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-rose-400 font-bold hover:bg-rose-500/10">
-                <AlertCircle className="w-5 h-5" /> {t('doc.emergency', 'Emergency Triage')}
+              <NavLink to="/doctor/lab-reports" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
+                <ClipboardList className="w-5 h-5 flex-shrink-0" /> <span>{t('nav.labReports', 'Lab Reports')}</span>
+              </NavLink>
+              <NavLink to="/doctor/emergency" onClick={onClose} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-rose-400 font-bold hover:bg-rose-500/10 transition-colors">
+                <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-400" /> <span>{t('doc.emergency', 'Emergency Triage')}</span>
+              </NavLink>
+              <NavLink to="/doctor/audit" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
+                <Shield className="w-5 h-5 flex-shrink-0" /> <span>{t('nav.audit', 'Audit Trail')}</span>
+              </NavLink>
+              <NavLink to="/doctor/verification" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
+                <Award className="w-5 h-5 flex-shrink-0" /> <span>{t('doc.verification', 'Verification')}</span>
+              </NavLink>
+              <NavLink to="/doctor/profile" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
+                <User className="w-5 h-5 flex-shrink-0" /> <span>{t('nav.profile', 'Profile')}</span>
               </NavLink>
               <NavLink to="/doctor/settings" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <Settings className="w-5 h-5" /> {t('nav.settings', 'Settings')}
+                <Settings className="w-5 h-5 flex-shrink-0" /> <span>{t('nav.settings', 'Settings')}</span>
               </NavLink>
             </>
           )}
 
+          {/* ================================= ADMIN MENU ================================= */}
           {role === 'ADMIN' && (
             <>
               <NavLink to="/admin/dashboard" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <Home className="w-5 h-5" /> {t('doc.dashboard', 'Dashboard')}
+                <Home className="w-5 h-5 flex-shrink-0" /> <span>{t('doc.dashboard', 'Dashboard')}</span>
               </NavLink>
               <NavLink to="/admin/doctors" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <Award className="w-5 h-5" /> {t('nav.doctors', 'Doctors')}
+                <Award className="w-5 h-5 flex-shrink-0" /> <span>{t('nav.doctors', 'Doctors')}</span>
               </NavLink>
               <NavLink to="/admin/hospitals" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <Building2 className="w-5 h-5" /> {t('nav.hospitals', 'Hospitals')}
+                <Building2 className="w-5 h-5 flex-shrink-0" /> <span>{t('nav.hospitals', 'Hospitals')}</span>
               </NavLink>
               <NavLink to="/admin/users" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <Users className="w-5 h-5" /> User Directory
+                <Users className="w-5 h-5 flex-shrink-0" /> <span>User Directory</span>
               </NavLink>
               <NavLink to="/admin/audit" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <ClipboardList className="w-5 h-5" /> {t('nav.audit', 'Audit Trail')}
+                <ClipboardList className="w-5 h-5 flex-shrink-0" /> <span>{t('nav.audit', 'Audit Trail')}</span>
+              </NavLink>
+              <NavLink to="/admin/security" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
+                <Key className="w-5 h-5 flex-shrink-0" /> <span>{t('nav.security', 'Security')}</span>
               </NavLink>
               <NavLink to="/admin/blockchain" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
-                <Shield className="w-5 h-5" /> {t('nav.blockchainProof', 'Blockchain Proof')}
+                <Shield className="w-5 h-5 flex-shrink-0" /> <span>{t('nav.blockchainProof', 'Blockchain Proof')}</span>
               </NavLink>
-              <NavLink to="/admin/emergency" onClick={onClose} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-rose-400 font-bold hover:bg-rose-500/10">
-                <AlertCircle className="w-5 h-5" /> {t('nav.emergency', 'Emergency Care')}
+              <NavLink to="/admin/emergency" onClick={onClose} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-rose-400 font-bold hover:bg-rose-500/10 transition-colors">
+                <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-400" /> <span>{t('nav.emergency', 'Emergency Care')}</span>
+              </NavLink>
+              <NavLink to="/admin/settings" onClick={onClose} className={({ isActive }) => (isActive ? activeLink : inactiveLink)}>
+                <Settings className="w-5 h-5 flex-shrink-0" /> <span>{t('nav.settings', 'Settings')}</span>
               </NavLink>
             </>
           )}
@@ -274,7 +362,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
             }}
             className="w-full flex items-center gap-3 px-3 py-2 text-rose-400 font-semibold rounded-xl hover:bg-rose-500/10 transition-colors"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="w-5 h-5 flex-shrink-0" />
             <span>{t('nav.logout', 'Sign Out')}</span>
           </button>
         </div>

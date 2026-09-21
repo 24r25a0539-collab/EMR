@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Shield,
   Search,
@@ -35,6 +35,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
 
   const langRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -56,6 +57,20 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
     if (role === 'DOCTOR') return '/doctor/dashboard';
     if (role === 'ADMIN') return '/admin/dashboard';
     return '/';
+  };
+
+  const getSearchPlaceholder = () => {
+    const path = location.pathname.toLowerCase();
+    if (path.startsWith('/admin') || (role === 'ADMIN' && path !== '/dashboard' && path !== '/')) {
+      return t('search.placeholderAdminShort', 'Search admin modules, doctor verification...');
+    }
+    if (path.startsWith('/doctor') || (role === 'DOCTOR' && path !== '/dashboard' && path !== '/')) {
+      return t('search.placeholderDoctorShort', 'Search clinical tools, access requests, authorized EMR...');
+    }
+    if (path.startsWith('/patient') || (role === 'PATIENT' && path !== '/dashboard' && path !== '/')) {
+      return t('search.placeholderPatientShort', 'Search health records, prescriptions, appointments...');
+    }
+    return t('search.placeholderDashboardShort', 'Search application features, EMR modules, navigation...');
   };
 
   return (
@@ -118,7 +133,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
               >
                 <span className="flex items-center gap-2 truncate">
                   <Search className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                  <span className="truncate">{t('search.placeholderShort', 'Search doctors, records, prescriptions, hospitals...')}</span>
+                  <span className="truncate">{getSearchPlaceholder()}</span>
                 </span>
                 <kbd className="px-1.5 py-0.5 text-[10px] bg-[#18181B] border border-white/[0.10] rounded text-slate-400 font-mono shadow-sm flex-shrink-0">
                   Ctrl K

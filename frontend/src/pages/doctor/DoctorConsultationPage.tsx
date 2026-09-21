@@ -150,10 +150,10 @@ export const DoctorConsultationPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 pb-24 text-white max-w-5xl mx-auto antialiased">
+    <div className="w-full max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 pb-24 text-white antialiased">
       {/* Banner */}
       <ScrollReveal direction="left">
-        <div className="bg-gradient-to-r from-[#0B0B0D] via-[#0D1520] to-[#0B0B0D] text-white p-8 sm:p-10 rounded-[32px] shadow-2xl border border-teal-500/20 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-[#0B0B0D] via-[#0D1520] to-[#0B0B0D] text-white p-5 sm:p-8 lg:p-10 rounded-[32px] shadow-2xl border border-teal-500/20 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10 space-y-2">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-teal-500/10 border border-teal-400/20 text-teal-400 text-xs font-mono font-semibold">

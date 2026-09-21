@@ -67,14 +67,14 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
   }, [threshold]);
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
-  const resolvedDistance = isMobile ? Math.min(distance, 40) : distance;
+  const resolvedDistance = isMobile ? 20 : distance;
 
   const getInitialTransform = () => {
     switch (direction) {
       case 'left':
-        return `translateX(-${resolvedDistance}px)`;
+        return isMobile ? 'translateY(15px)' : `translateX(-${resolvedDistance}px)`;
       case 'right':
-        return `translateX(${resolvedDistance}px)`;
+        return isMobile ? 'translateY(15px)' : `translateX(${resolvedDistance}px)`;
       case 'up':
       case 'bottom':
       case 'center':
@@ -142,14 +142,14 @@ export const ScrollRevealGroup: React.FC<ScrollRevealGroupProps> = ({
   const effectiveDirection = direction || baseDirection;
 
   return (
-    <div className={className}>
+    <div className={`w-full ${className}`}>
       {items.map((child, index) => {
         let dir: RevealDirection = effectiveDirection;
         if (alternateDirection) {
           dir = index % 2 === 0 ? 'left' : 'right';
         }
         return (
-          <ScrollReveal key={index} direction={dir} delay={delay + index * delayStep}>
+          <ScrollReveal key={index} direction={dir} delay={delay + index * delayStep} className="w-full">
             {child}
           </ScrollReveal>
         );
@@ -175,8 +175,8 @@ export const AnimatedSection: React.FC<AnimatedSectionProps> = ({
   glow = 'none',
 }) => {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
-  const xOffset = direction === 'left' ? (isMobile ? -40 : -80) : direction === 'right' ? (isMobile ? 40 : 80) : 0;
-  const yOffset = direction === 'up' || direction === 'bottom' || direction === 'center' ? (isMobile ? 30 : 50) : (direction === 'down' || direction === 'top') ? (isMobile ? -30 : -50) : 0;
+  const xOffset = isMobile ? 0 : direction === 'left' ? -80 : direction === 'right' ? 80 : 0;
+  const yOffset = direction === 'up' || direction === 'bottom' || direction === 'center' ? (isMobile ? 20 : 50) : (direction === 'down' || direction === 'top') ? (isMobile ? -20 : -50) : 0;
 
   const glowClass = {
     blue: 'dark-radial-glow-blue',
@@ -193,7 +193,7 @@ export const AnimatedSection: React.FC<AnimatedSectionProps> = ({
       whileInView={{ opacity: 1, x: 0, y: 0, filter: 'blur(0px) saturate(1)' }}
       viewport={{ once: true, amount: 0.15 }}
       transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
-      className={`relative ${glowClass} ${className}`}
+      className={`relative w-full ${glowClass} ${className}`}
     >
       {children}
     </motion.section>
@@ -217,8 +217,8 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = ({
   whileHover = true,
 }) => {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
-  const xOffset = direction === 'left' ? (isMobile ? -30 : -60) : direction === 'right' ? (isMobile ? 30 : 60) : 0;
-  const yOffset = (direction === 'up' || direction === 'bottom') ? (isMobile ? 25 : 45) : (direction === 'down' || direction === 'top') ? (isMobile ? -25 : -45) : 0;
+  const xOffset = isMobile ? 0 : direction === 'left' ? -60 : direction === 'right' ? 60 : 0;
+  const yOffset = (direction === 'up' || direction === 'bottom') ? (isMobile ? 20 : 45) : (direction === 'down' || direction === 'top') ? (isMobile ? -20 : -45) : 0;
   const delay = Math.min(index * 0.08, 0.4);
 
   return (
@@ -236,7 +236,7 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = ({
             }
           : undefined
       }
-      className={`relative ${className}`}
+      className={`relative w-full ${className}`}
     >
       {children}
     </motion.div>
@@ -287,7 +287,7 @@ export const PremiumCard: React.FC<PremiumCardProps> = ({
 
   return (
     <div
-      className={`rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 ${getAccentClass()} ${hoverLift ? 'hover-lift' : ''} ${className}`}
+      className={`w-full rounded-[24px] sm:rounded-[28px] p-4 sm:p-6 ${getAccentClass()} ${hoverLift ? 'hover-lift' : ''} ${className}`}
       {...rest}
     >
       {children}
@@ -318,11 +318,11 @@ export const GlowCard: React.FC<GlowCardProps> = ({
   const glowBg = glowMap[glowColor] || 'from-teal-500/20 via-blue-500/10 to-transparent';
 
   return (
-    <div className={`relative group ${className}`}>
+    <div className={`w-full relative group ${className}`}>
       <div
         className={`absolute -inset-0.5 rounded-[30px] bg-gradient-to-r ${glowBg} opacity-40 group-hover:opacity-75 blur-xl transition-all duration-500 pointer-events-none`}
       />
-      <div className="relative z-10 bg-[#101012] border border-white/[0.08] rounded-[28px] overflow-hidden p-6 shadow-2xl">
+      <div className="relative z-10 bg-[#101012] border border-white/[0.08] rounded-[28px] overflow-hidden p-4 sm:p-6 shadow-2xl">
         {children}
       </div>
     </div>
@@ -338,9 +338,9 @@ export interface SpotlightBorderProps {
 export const SpotlightBorder: React.FC<SpotlightBorderProps> = ({ children, className = '' }) => {
   return (
     <div
-      className={`relative rounded-[28px] p-[1px] bg-gradient-to-b from-white/[0.14] via-white/[0.04] to-transparent shadow-xl ${className}`}
+      className={`w-full relative rounded-[28px] p-[1px] bg-gradient-to-b from-white/[0.14] via-white/[0.04] to-transparent shadow-xl ${className}`}
     >
-      <div className="rounded-[27px] bg-[#101012] p-6 h-full">{children}</div>
+      <div className="rounded-[27px] bg-[#101012] p-4 sm:p-6 h-full">{children}</div>
     </div>
   );
 };

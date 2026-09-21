@@ -115,11 +115,11 @@ export const DoctorDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-12 pb-24 text-white antialiased">
+    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 sm:space-y-12 pb-24 text-white antialiased">
       {/* ========================================================================= */}
       {/* SECTION 1: DOCTOR HERO BANNER */}
       {/* ========================================================================= */}
-      <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-b from-[#0B0B0D] via-[#08080A] to-[#050506] border border-white/[0.08] p-8 sm:p-12 shadow-2xl">
+      <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-b from-[#0B0B0D] via-[#08080A] to-[#050506] border border-white/[0.08] p-5 sm:p-8 lg:p-12 shadow-2xl">
         <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
         <div className="absolute bottom-0 left-10 w-80 h-80 bg-teal-500/10 rounded-full blur-[90px] pointer-events-none" />
 
@@ -278,7 +278,7 @@ export const DoctorDashboardPage: React.FC = () => {
                 </p>
               </div>
 
-              <form onSubmit={handleSearchSubmit} className="relative z-10 flex items-center gap-2">
+              <form onSubmit={handleSearchSubmit} className="relative z-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <div className="relative flex-1">
                   <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
@@ -291,7 +291,7 @@ export const DoctorDashboardPage: React.FC = () => {
                 </div>
                 <button
                   type="submit"
-                  className="px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-colors shadow-lg shadow-blue-600/20 whitespace-nowrap cursor-pointer"
+                  className="px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-colors shadow-lg shadow-blue-600/20 whitespace-nowrap cursor-pointer text-center"
                 >
                   Lookup
                 </button>
@@ -520,11 +520,11 @@ export const DoctorDashboardPage: React.FC = () => {
       {/* SECTION 5: EMERGENCY ACCESS PROTOCOL */}
       {/* ========================================================================= */}
       <ScrollReveal direction="bottom">
-        <section className="p-8 sm:p-10 rounded-[32px] bg-gradient-to-br from-[#1A0A0E] via-[#0E0608] to-[#050506] border border-rose-500/30 shadow-2xl relative overflow-hidden">
+        <section className="p-5 sm:p-8 lg:p-10 rounded-[32px] bg-gradient-to-br from-[#1A0A0E] via-[#0E0608] to-[#050506] border border-rose-500/30 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-80 h-80 bg-rose-600/10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-            <div className="flex items-start gap-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5">
               <div className="w-14 h-14 rounded-2xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-rose-600/30">
                 <ShieldAlert className="w-7 h-7" />
               </div>
